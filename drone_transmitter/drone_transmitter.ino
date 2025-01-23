@@ -107,29 +107,75 @@ void loop() {
   // } else {
   //   throttle += throttleBuffer;
   // }
-  if (throttle > initialThrottle + throttleBuffer){
-    LoRa.write(map(throttle, 1023-(initialThrottle+30)*2, 1023, -10, 10));
-  }
+  
 
   // Map trim value to (-10,10) if throttle exceeds buffer threshold, otherwise -100
-  if(motorActive1 and abs(throttle - initialThrottle) > throttleBuffer){
-    LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
+  int motorThrottle1, motorThrottle2, motorThrottle3, motorThrottle4 = 0;
+  if (motorActive1){
+    if (throttle > initialThrottle + throttleBuffer){
+      motorThrottle1 = map(throttle, 1023-(initialThrottle+30)*2, 1023, -10, 10);
+      LoRa.write(motorThrottle1);
+    } else if (throttle < initialThrottle - throttleBuffer){
+      motorThrottle1 = map(throttle, 1023-(initialThrottle-30)*2, 1023, -10, 10)
+      LoRa.write(motorThrottle1);
+    }
   } else {LoRa.write(-100);}
 
-  if(motorActive2 and abs(throttle - initialThrottle) > throttleBuffer){
-    LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
+  if (motorActive2){
+    if (throttle > initialThrottle + throttleBuffer){
+      motorThrottle2 = map(throttle, 1023-(initialThrottle+30)*2, 1023, -10, 10);
+      LoRa.write(motorThrottle2);
+    } else if (throttle < initialThrottle - throttleBuffer){
+      motorThrottle2 = map(throttle, 1023-(initialThrottle-30)*2, 1023, -10, 10)
+      LoRa.write(motorThrottle2);
+    }
   } else {LoRa.write(-100);}
 
-  if(motorActive3 and abs(throttle - initialThrottle) > throttleBuffer){
-    LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
+  if (motorActive3){
+    if (throttle > initialThrottle + throttleBuffer){
+      motorThrottle3 = map(throttle, 1023-(initialThrottle+30)*2, 1023, -10, 10);
+      LoRa.write(motorThrottle3);
+    } else if (throttle < initialThrottle - throttleBuffer){
+      motorThrottle3 = map(throttle, 1023-(initialThrottle-30)*2, 1023, -10, 10)
+      LoRa.write(motorThrottle3);
+    }
   } else {LoRa.write(-100);}
 
-  if(motorActive4 and abs(throttle - initialThrottle) > throttleBuffer){
-    LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
-  } else {LoRa.write(-100);}  
+  if (motorActive4){
+    if (throttle > initialThrottle + throttleBuffer){
+      motorThrottle4 = map(throttle, 1023-(initialThrottle+30)*2, 1023, -10, 10);
+      LoRa.write(motorThrottle4);
+    } else if (throttle < initialThrottle - throttleBuffer){
+      motorThrottle4 = map(throttle, 1023-(initialThrottle-30)*2, 1023, -10, 10)
+      LoRa.write(motorThrottle4);
+    }
+  } else {LoRa.write(-100);}
+  
+  // if(motorActive1 and abs(throttle - initialThrottle) > throttleBuffer){
+  //   LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
+  // } else {LoRa.write(-100);}
+
+  // if(motorActive2 and abs(throttle - initialThrottle) > throttleBuffer){
+  //   LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
+  // } else {LoRa.write(-100);}
+
+  // if(motorActive3 and abs(throttle - initialThrottle) > throttleBuffer){
+  //   LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
+  // } else {LoRa.write(-100);}
+
+  // if(motorActive4 and abs(throttle - initialThrottle) > throttleBuffer){
+  //   LoRa.write(map(throttle, 1023-initialThrottle*2, 1023, -10, 10));
+  // } else {LoRa.write(-100);}  
 
   LoRa.endPacket();
 
+
+  // More Serial DEBUG info
+  Serial.print(motorThrottle1+", ");
+  Serial.print(motorThrottle2+", ");
+  Serial.print(motorThrottle3+", ");
+  Serial.println(motorThrottle4+", ");
+  
 
 
   int packetSize = LoRa.parsePacket();
@@ -184,6 +230,7 @@ void loop() {
     Serial.print("' with RSSI ");
     Serial.println(LoRa.packetRssi());
 
-
+  // Delay 500 ms
+  delay(500);
   
 }
