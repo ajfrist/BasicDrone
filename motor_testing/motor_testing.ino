@@ -2,6 +2,8 @@ int OUT = 3;
 int IN = 1;
 int count = 1;
 int inc = 1;
+NEW SKETCH
+
 
 void setup() {
   Serial.begin(9600);
