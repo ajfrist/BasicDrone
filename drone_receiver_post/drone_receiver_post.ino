@@ -2,6 +2,15 @@
 #include <SPI.h>
 #include <LoRa.h>
 
+#define DEBUG 1  // Set to 1 to enable debug prints
+#if DEBUG
+  #define DEBUG_PRINT(x)    Serial.print(x)
+  #define DEBUG_PRINTLN(x)  Serial.println(x)
+#else
+  #define DEBUG_PRINT(x)    do {} while (0)
+  #define DEBUG_PRINTLN(x)  do {} while (0)
+#endif
+
 // Memory checking function
 #ifdef __arm__
 // should use uinstd.h to define sbrk but Due causes a conflict
@@ -81,9 +90,9 @@ void setup() {
   motor4.writeMicroseconds(1000);
 
   while (!Serial);
-  Serial.println("LoRa Receiver");
+  DEBUG_PRINTLN("LoRa Receiver");
   if (!LoRa.begin(915E6)) {
-    Serial.println("Starting Lora failed!");
+    DEBUG_PRINTLN("Starting Lora failed!");
     while (1);
   }
 
@@ -93,8 +102,8 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("Free memory: ");
-  Serial.println(freeMemory());
+  DEBUG_PRINT("Free memory: ");
+  DEBUG_PRINTLN(freeMemory());
   // int throttle = (int) LoRa.read();
   // int trimToggle = (int) LoRa.read();
   // int switch2 = (int) LoRa.read();
@@ -119,16 +128,16 @@ void loop() {
     
   // try to parse packet (extra packets?)
   int packetSize = LoRa.parsePacket();
-  // Serial.print("packet size: ");
-  // Serial.println(packetSize);
+  // DEBUG_PRINT("packet size: ");
+  // DEBUG_PRINTLN(packetSize);
   if (packetSize) {
     // read packet
-    Serial.print("Received packet '");
+    DEBUG_PRINT("Received packet '");
 
     // read packet
     // while (int x = LoRa.available() > 0) {
-    //   // Serial.println((char)LoRa.read());
-    //   Serial.println(x);
+    //   // DEBUG_PRINTLN((char)LoRa.read());
+    //   DEBUG_PRINTLN(x);
       
       // String buffer = "";
       // char c = (char) LoRa.read();
@@ -136,28 +145,28 @@ void loop() {
       //   buffer += c;
       //   c = (char) LoRa.read();
       // }
-      // Serial.print("String: ");
-      // Serial.println(buffer);
-      Serial.println("-");
-      Serial.println(freeMemory());
+      // DEBUG_PRINT("String: ");
+      // DEBUG_PRINTLN(buffer);
+      DEBUG_PRINTLN("-");
+      DEBUG_PRINTLN(freeMemory());
       throttle =  readToInt();
-      Serial.println(freeMemory());
+      DEBUG_PRINTLN(freeMemory());
       trimToggle = readToInt();
-      Serial.println(freeMemory());
+      DEBUG_PRINTLN(freeMemory());
       power = readToInt();
-      Serial.println(freeMemory());
+      DEBUG_PRINTLN(freeMemory());
       x1 = readToInt();
-      Serial.println(freeMemory());
+      DEBUG_PRINTLN(freeMemory());
       y1 = readToInt(); // 1
-      Serial.println(freeMemory());
+      DEBUG_PRINTLN(freeMemory());
       x2 = readToInt();
-      Serial.println(freeMemory());
+      DEBUG_PRINTLN(freeMemory());
       y2 = readToInt(); // 1,1
-      Serial.println(freeMemory());
-      Serial.println("-");
+      DEBUG_PRINTLN(freeMemory());
+      DEBUG_PRINTLN("-");
 
     // }
-    Serial.println("end");
+    DEBUG_PRINTLN("end");
     // while (LoRa.available()) {
 
       // throttle = (int) LoRa.read();
@@ -169,26 +178,26 @@ void loop() {
       // y2 = (int) LoRa.read();
     // }
   }
-  Serial.print("Throttle: ");
-  Serial.println(throttle);
-  Serial.print("Trim Toggle: ");
-  Serial.println(trimToggle);
-  Serial.print("Power: ");
-  Serial.println(power);
-  Serial.print("x1: ");
-  Serial.println(x1);
-  Serial.print("y1: ");
-  Serial.println(y1);
-  Serial.print("x2: ");
-  Serial.println(x2);
-  Serial.print("y2: ");
-  Serial.println(y2);
+  DEBUG_PRINT("Throttle: ");
+  DEBUG_PRINTLN(throttle);
+  DEBUG_PRINT("Trim Toggle: ");
+  DEBUG_PRINTLN(trimToggle);
+  DEBUG_PRINT("Power: ");
+  DEBUG_PRINTLN(power);
+  DEBUG_PRINT("x1: ");
+  DEBUG_PRINTLN(x1);
+  DEBUG_PRINT("y1: ");
+  DEBUG_PRINTLN(y1);
+  DEBUG_PRINT("x2: ");
+  DEBUG_PRINTLN(x2);
+  DEBUG_PRINT("y2: ");
+  DEBUG_PRINTLN(y2);
 
   int receivedRssi = LoRa.packetRssi();
 
   // If not -1, then packet was received
   if (throttle == -1 || trimToggle == -1 || power == -1 || x1 == -1 || y1 == -1 || x2 == -1 || y2 == -1){ 
-    Serial.println("No transmitted data received");
+    DEBUG_PRINTLN("No transmitted data received");
     // motor1.writeMicroseconds(last_power1);
     // motor2.writeMicroseconds(last_power2);
     // motor3.writeMicroseconds(last_power3);
@@ -198,7 +207,7 @@ void loop() {
 
   // If less than 0, then corrupted transmission - can be combined with above, but for now is explicit statement for testing purposes
   if (throttle <= -1 || trimToggle <= -1 || power <= -1 || x1 <= -1 || y1 <= -1 || x2 <= -1 || y2 <= -1){ 
-    Serial.println("Corrupted data received, returning.");
+    DEBUG_PRINTLN("Corrupted data received, returning.");
     return; 
   }
 
@@ -207,7 +216,7 @@ void loop() {
     isOn = power;
   }
   if (isOn == 0){
-    Serial.println("Power switch not enabled on transmitter.");
+    DEBUG_PRINTLN("Power switch not enabled on transmitter.");
     motor1.writeMicroseconds(1000);
     motor2.writeMicroseconds(1000);
     motor3.writeMicroseconds(1000);
@@ -312,6 +321,17 @@ void loop() {
   motor2.writeMicroseconds(power2);
   motor3.writeMicroseconds(power3);
   motor4.writeMicroseconds(power4);
+  DEBUG_PRINT("Motor powers: ");
+  DEBUG_PRINT(power1);
+  DEBUG_PRINT(" ");
+  DEBUG_PRINT(power2);
+  DEBUG_PRINT(" ");
+  DEBUG_PRINT(power3);
+  DEBUG_PRINT(" ");
+  DEBUG_PRINT(power4);
+  DEBUG_PRINTLN();
+  #if DEBUG
+  #else
   Serial.print("Motor powers: ");
   Serial.print(power1);
   Serial.print(" ");
@@ -321,6 +341,7 @@ void loop() {
   Serial.print(" ");
   Serial.print(power4);
   Serial.println();
+  #endif
   
   
   // // Return detected received data
@@ -338,33 +359,33 @@ void loop() {
   // LoRa.write(receivedRssi);
   // LoRa.endPacket();
   
-  // Serial.println("Packet sent");
+  // DEBUG_PRINTLN("Packet sent");
 }
 
 // Negative if failed reading: invalid packet
 int readToInt(){
-  Serial.print("read:");
+  DEBUG_PRINT("read:");
   String buffer = "";
-  Serial.print("-");
+  DEBUG_PRINT("-");
   char c = (char) LoRa.read();
-  Serial.print("-");
-  Serial.print("\'");
-  Serial.print((int)c);
-  Serial.print("\'");
+  DEBUG_PRINT("-");
+  DEBUG_PRINT("\'");
+  DEBUG_PRINT((int)c);
+  DEBUG_PRINT("\'");
   while (c != '_' && c >= 0){
-    Serial.print("1");
+    DEBUG_PRINT("1");
     buffer += c;
-    Serial.print("2");
+    DEBUG_PRINT("2");
     c = (char) LoRa.read();
-    Serial.print("3");
-    Serial.print("\'");
-    Serial.print((int)c);
-    Serial.print("\'");
+    DEBUG_PRINT("3");
+    DEBUG_PRINT("\'");
+    DEBUG_PRINT((int)c);
+    DEBUG_PRINT("\'");
   }
-  Serial.println("-");
+  DEBUG_PRINTLN("-");
   if (c < 0){
-    Serial.println("\n\nTESTING RESTART...");
-    delay(5000);
+    DEBUG_PRINTLN("\n\nTESTING RESTART...");
+    //delay(5000);
     return c;
   }
   return buffer.toInt();
