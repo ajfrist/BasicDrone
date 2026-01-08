@@ -1,0 +1,17 @@
+move inward the vertical supporters
+need 4 bars, not two
+loop on top front & top back for feeding wire through to prevent falling into side props
+side guard not aligned
+screw holes - not long enough, too deep
+
+screw measures: 
+thread lentgh: .230
+thread width: .115
+head width .210
+head height: .114
+
+
+
+screw hole scale x: 1.79167 times      \___ 0.0475 all direction, 0.095 per axis
+ 		y:  1.2375 times   /
+vertically move screw head gap: .09 clearance on bottom, 0.11 rest through to top
