@@ -1,6 +1,7 @@
 #include <Servo.h>
 #include <SPI.h>
 #include <LoRa.h>
+// #include <Wire.h> // used for all I2C devices
 
 #define DEBUG 1  // Set to 1 to enable debug prints
 #if DEBUG
@@ -30,6 +31,19 @@ int freeMemory() {
 #endif  // __arm__
 }
 
+
+double applyDeadzone(int value, int deadzone_radius = 5);
+
+// const int MPU_ADDR = 0x68; // I2C address of the MPU-6050. If AD0 pin is set to HIGH, the I2C address will be 0x69.
+// int16_t accelerometer_x, accelerometer_y, accelerometer_z; // variables for accelerometer raw data
+// int16_t gyro_x, gyro_y, gyro_z; // variables for gyro raw data
+// int16_t temperature; // variables for temperature data
+// char tmp_str[7]; // temporary variable used in convert function - used to output data to serial console
+// char* convert_int16_to_str(int16_t i) { // converts int16 to string. Moreover, resulting strings will have the same length in the debug monitor.
+//   sprintf(tmp_str, "%6d", i);
+//   return tmp_str;
+// }
+
 Servo motor1;
 Servo motor2;
 Servo motor3;
@@ -39,23 +53,40 @@ Servo motor4;
 // int MOTOR_PIN_2 = 9;
 // int MOTOR_PIN_3 = 10;
 // int MOTOR_PIN_4 = 13;
-int MOTOR_PIN_1 = 3;
-int MOTOR_PIN_2 = 5;
-int MOTOR_PIN_3 = 6;
-int MOTOR_PIN_4 = 9;
+const int MOTOR_PIN_1 = 3;
+const int MOTOR_PIN_2 = 5;
+const int MOTOR_PIN_3 = 6;
+const int MOTOR_PIN_4 = 9;
+
+
+/**
+Motor microsecond active value ranges (low/off -> high/max power): 
+motor1: ~1100-1900
+motor2: ~1100-1900
+motor3: ~1100-1900
+motor4: ~1100-1900
+
+DEFAULT -> 1000 = OFF
+*/
 
 //FIX BASED ON TUNING
 // Default, idle (balanced) speeds
-int motor_power_1 = 1300;
-int motor_power_2 = 1300;
-int motor_power_3 = 1300;
-int motor_power_4 = 1300;
+const int MOTOR_POWER_1 = 1300;
+const int MOTOR_POWER_2 = 1300;
+const int MOTOR_POWER_3 = 1300;
+const int MOTOR_POWER_4 = 1300;
+
+// State trim settings
+int motor_trim_1 = 0;
+int motor_trim_2 = 0;
+int motor_trim_3 = 0;
+int motor_trim_4 = 0;
 
 // Used if lost packet or signal
-int last_power1 = 1300;
-int last_power2 = 1300;
-int last_power3 = 1300;
-int last_power4 = 1300;
+double last_power1 = MOTOR_POWER_1;
+double last_power2 = MOTOR_POWER_2;
+double last_power3 = MOTOR_POWER_3;
+double last_power4 = MOTOR_POWER_4;
 int isOn = 0;
 
 
@@ -72,10 +103,11 @@ int isOn = 0;
  Motor 4: Rear right CCW
  */
 
-double thrustTrim = 0.2;
-double forwardMovementTrim = 0.2;
-double sideMovementTrim = 0.2;
-double rotationTrim = 0.2;
+// Set max bounding for motor movements; keeps joystick values within ms domain
+const double THRUST_SCALER = 0.5;
+const double FORWARD_MOVEMENT_SCALER = 0.5;
+const double SIDE_MOVEMENT_SCALER = 0.5;
+const double ROTATION_SCALER = 0.5;
 
 
 void setup() {
@@ -97,6 +129,13 @@ void setup() {
   }
 
   LoRa.receive();
+
+  // // Setup for GY-521 Gyro/Accelerometer
+  // Wire.begin();
+  // Wire.beginTransmission(MPU_ADDR); // Begins a transmission to the I2C slave (GY-521 board)
+  // Wire.write(0x6B); // PWR_MGMT_1 register
+  // Wire.write(0); // set to zero (wakes up the MPU-6050)
+  // Wire.endTransmission(true);
 
   delay(15000);
 }
@@ -125,6 +164,35 @@ void loop() {
   // y1 = (int) LoRa.read();
   // x2 = (int) LoRa.read();
   // y2 = (int) LoRa.read();
+
+
+  // // Retrieve GY-521 Gyro/Accelerometer info
+  // Wire.beginTransmission(MPU_ADDR); // access I2C device at listed address
+  // Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H) [MPU-6000 and MPU-6050 Register Map and Descriptions Revision 4.2, p.40]
+  // Wire.endTransmission(false); // the parameter indicates that the Arduino will send a restart. As a result, the connection is kept active.
+  // Wire.requestFrom(MPU_ADDR, 7*2, true); // request a total of 7*2=14 registers
+  
+  // // "Wire.read()<<8 | Wire.read();" means two registers are read and stored in the same variable
+  // accelerometer_x = Wire.read()<<8 | Wire.read(); // reading registers: 0x3B (ACCEL_XOUT_H) and 0x3C (ACCEL_XOUT_L)
+  // accelerometer_y = Wire.read()<<8 | Wire.read(); // reading registers: 0x3D (ACCEL_YOUT_H) and 0x3E (ACCEL_YOUT_L)
+  // accelerometer_z = Wire.read()<<8 | Wire.read(); // reading registers: 0x3F (ACCEL_ZOUT_H) and 0x40 (ACCEL_ZOUT_L)
+  // temperature = Wire.read()<<8 | Wire.read(); // reading registers: 0x41 (TEMP_OUT_H) and 0x42 (TEMP_OUT_L)
+  // gyro_x = Wire.read()<<8 | Wire.read(); // reading registers: 0x43 (GYRO_XOUT_H) and 0x44 (GYRO_XOUT_L)
+  // gyro_y = Wire.read()<<8 | Wire.read(); // reading registers: 0x45 (GYRO_YOUT_H) and 0x46 (GYRO_YOUT_L)
+  // gyro_z = Wire.read()<<8 | Wire.read(); // reading registers: 0x47 (GYRO_ZOUT_H) and 0x48 (GYRO_ZOUT_L)
+  
+  // // print out data
+  // Serial.print("aX = "); Serial.print(convert_int16_to_str(accelerometer_x));
+  // Serial.print(" | aY = "); Serial.print(convert_int16_to_str(accelerometer_y));
+  // Serial.print(" | aZ = "); Serial.print(convert_int16_to_str(accelerometer_z));
+  // // the following equation was taken from the documentation [MPU-6000/MPU-6050 Register Map and Description, p.30]
+  // Serial.print(" | temp = "); Serial.print(temperature/340.00+36.53);
+  // Serial.print(" | gX = "); Serial.print(convert_int16_to_str(gyro_x));
+  // Serial.print(" | gY = "); Serial.print(convert_int16_to_str(gyro_y));
+  // Serial.print(" | gZ = "); Serial.print(convert_int16_to_str(gyro_z));
+  // Serial.println();
+  
+
     
   // try to parse packet (extra packets?)
   int packetSize = LoRa.parsePacket();
@@ -215,6 +283,7 @@ void loop() {
   if (power != -1){
     isOn = power;
   }
+  // If powered off, turn motors off (1000 us)
   if (isOn == 0){
     DEBUG_PRINTLN("Power switch not enabled on transmitter.");
     motor1.writeMicroseconds(1000);
@@ -224,103 +293,120 @@ void loop() {
     return;
   }
 
-  int power1 = motor_power_1;
-  int power2 = motor_power_2;
-  int power3 = motor_power_3;
-  int power4 = motor_power_4;
+  // Calculcate current iteration motor power amounts
+  double power1 = 0;
+  double power2 = 0;
+  double power3 = 0;
+  double power4 = 0;
+
   // If not trimming 
   if (trimToggle == 0){
     //vertical ascent management
-    power1 = motor_power_1 + (y1 - 511) * thrustTrim * throttle / 1023;
-    power2 = motor_power_2 + (y1 - 511) * thrustTrim * throttle / 1023;
-    power3 = motor_power_3 + (y1 - 511) * thrustTrim * throttle / 1023;
-    power4 = motor_power_4 + (y1 - 511) * thrustTrim * throttle / 1023;
+    power1 += (applyDeadzone(y1) - 511) * THRUST_SCALER * throttle / 1023;
+    power2 += (applyDeadzone(y1) - 511) * THRUST_SCALER * throttle / 1023;
+    power3 += (applyDeadzone(y1) - 511) * THRUST_SCALER * throttle / 1023;
+    power4 += (applyDeadzone(y1) - 511) * THRUST_SCALER * throttle / 1023;
 
     //forward/backwards movement
-    power1 += (y2 - 511) * forwardMovementTrim * throttle / 1023;
-    power2 -= (y2 - 511) * forwardMovementTrim * throttle / 1023;
-    power3 -= (y2 - 511) * forwardMovementTrim * throttle / 1023;
-    power4 += (y2 - 511) * forwardMovementTrim * throttle / 1023;
+    power1 += (applyDeadzone(y2) - 511) * FORWARD_MOVEMENT_SCALER * throttle / 1023;
+    power2 -= (applyDeadzone(y2) - 511) * FORWARD_MOVEMENT_SCALER * throttle / 1023;
+    power3 -= (applyDeadzone(y2) - 511) * FORWARD_MOVEMENT_SCALER * throttle / 1023;
+    power4 += (applyDeadzone(y2) - 511) * FORWARD_MOVEMENT_SCALER * throttle / 1023;
 
     //left/right movement
-    power1 += (x2 - 511) * sideMovementTrim * throttle / 1023;
-    power2 += (x2 - 511) * sideMovementTrim * throttle / 1023;
-    power3 -= (x2 - 511) * sideMovementTrim * throttle / 1023;
-    power4 -= (x2 - 511) * sideMovementTrim * throttle / 1023;
+    power1 += (applyDeadzone(x2) - 511) * SIDE_MOVEMENT_SCALER * throttle / 1023;
+    power2 += (applyDeadzone(x2) - 511) * SIDE_MOVEMENT_SCALER * throttle / 1023;
+    power3 -= (applyDeadzone(x2) - 511) * SIDE_MOVEMENT_SCALER * throttle / 1023;
+    power4 -= (applyDeadzone(x2) - 511) * SIDE_MOVEMENT_SCALER * throttle / 1023;
 
     //rotation 
-    power1 -= (x1 - 511) * rotationTrim * throttle / 1023;
-    power2 += (x1 - 511) * rotationTrim * throttle / 1023;
-    power3 -= (x1 - 511) * rotationTrim * throttle / 1023;
-    power4 += (x1 - 511) * rotationTrim * throttle / 1023;
+    power1 -= (applyDeadzone(x1) - 511) * ROTATION_SCALER * throttle / 1023;
+    power2 += (applyDeadzone(x1) - 511) * ROTATION_SCALER * throttle / 1023;
+    power3 -= (applyDeadzone(x1) - 511) * ROTATION_SCALER * throttle / 1023;
+    power4 += (applyDeadzone(x1) - 511) * ROTATION_SCALER * throttle / 1023;
   }
   // Trimming mode
   else if (trimToggle == 1){
     // Trim vertical ascent
     if (y1 > 511){ // up
-      motor_power_1 += 10;
-      motor_power_2 += 10;
-      motor_power_3 += 10;
-      motor_power_4 += 10;
+      motor_trim_1 += 10;
+      motor_trim_2 += 10;
+      motor_trim_3 += 10;
+      motor_trim_4 += 10;
     } 
     else if (y1 < 511){ // down
-      motor_power_1 -= 10;
-      motor_power_2 -= 10;
-      motor_power_3 -= 10;
-      motor_power_4 -= 10;
+      motor_trim_1 -= 10;
+      motor_trim_2 -= 10;
+      motor_trim_3 -= 10;
+      motor_trim_4 -= 10;
     }
     // Trim forward/backwards movement
     if (y2 > 511){ // forward
-      motor_power_1 += 10;
-      motor_power_2 -= 10;
-      motor_power_3 -= 10;
-      motor_power_4 += 10;
+      motor_trim_1 += 10;
+      motor_trim_2 -= 10;
+      motor_trim_3 -= 10;
+      motor_trim_4 += 10;
     } 
     else if (y2 < 511){ // backward
-      motor_power_1 -= 10;
-      motor_power_2 += 10;
-      motor_power_3 += 10;
-      motor_power_4 -= 10;
+      motor_trim_1 -= 10;
+      motor_trim_2 += 10;
+      motor_trim_3 += 10;
+      motor_trim_4 -= 10;
     }
     // Trim left/right movement
     if (x2 > 511){ // right
-      motor_power_1 += 10;
-      motor_power_2 += 10;
-      motor_power_3 -= 10;
-      motor_power_4 -= 10;
+      motor_trim_1 += 10;
+      motor_trim_2 += 10;
+      motor_trim_3 -= 10;
+      motor_trim_4 -= 10;
     } 
     else if (x2 < 511){ // left
-      motor_power_1 -= 10;
-      motor_power_2 -= 10;
-      motor_power_3 += 10;
-      motor_power_4 += 10;
+      motor_trim_1 -= 10;
+      motor_trim_2 -= 10;
+      motor_trim_3 += 10;
+      motor_trim_4 += 10;
     }
     // Trim rotation
     if (x1 > 511){ // CW
-      motor_power_1 -= 10;
-      motor_power_2 += 10;
-      motor_power_3 -= 10;
-      motor_power_4 += 10;
+      motor_trim_1 -= 10;
+      motor_trim_2 += 10;
+      motor_trim_3 -= 10;
+      motor_trim_4 += 10;
     } 
-    else if (x2 < 511){ // CCW
-      motor_power_1 += 10;
-      motor_power_2 -= 10;
-      motor_power_3 += 10;
-      motor_power_4 -= 10;
-    }
-
-    
+    else if (x1 < 511){ // CCW
+      motor_trim_1 += 10;
+      motor_trim_2 -= 10;
+      motor_trim_3 += 10;
+      motor_trim_4 -= 10;
+    }    
   }
 
+  // Add idle speed to motor powers
+  power1 += MOTOR_POWER_1 + motor_trim_1;
+  power2 += MOTOR_POWER_2 + motor_trim_2;
+  power3 += MOTOR_POWER_3 + motor_trim_3;
+  power4 += MOTOR_POWER_4 + motor_trim_4;
+
+  
+  // Only write to motors if value has changed since last loop - shouldn't need to continuously update
+  if (abs(last_power1-power1)<0.001){
+    motor1.writeMicroseconds((int) power1);
+  }
+  if (abs(last_power2-power2)<0.001){
+    motor2.writeMicroseconds((int) power2);
+  }
+  if (abs(last_power3-power3)<0.001){
+    motor3.writeMicroseconds((int) power3);
+  }
+  if (abs(last_power4-power4)<0.001){
+    motor4.writeMicroseconds((int) power4);
+  }
   last_power1 = power1;
   last_power2 = power2;
   last_power3 = power3;
   last_power4 = power4;
-  
-  motor1.writeMicroseconds(power1);
-  motor2.writeMicroseconds(power2);
-  motor3.writeMicroseconds(power3);
-  motor4.writeMicroseconds(power4);
+
+  // Debug print motor powers to console
   DEBUG_PRINT("Motor powers: ");
   DEBUG_PRINT(power1);
   DEBUG_PRINT(" ");
@@ -348,10 +434,10 @@ void loop() {
   // LoRa.beginPacket();
   // LoRa.write(throttle);
   // // LoRa.write(motorBitmask);
-  // // LoRa.write(motor_power_1);
-  // // LoRa.write(motor_power_2);
-  // // LoRa.write(motor_power_3);
-  // // LoRa.write(motor_power_4);
+  // // LoRa.write(MOTOR_POWER_1);
+  // // LoRa.write(MOTOR_POWER_2);
+  // // LoRa.write(MOTOR_POWER_3);
+  // // LoRa.write(MOTOR_POWER_4);
   // LoRa.write(power1);
   // LoRa.write(power2);
   // LoRa.write(power3);
@@ -389,4 +475,25 @@ int readToInt(){
     return c;
   }
   return buffer.toInt();
+}
+
+/*
+ Applies cushion around neutral joystick to account for drift & slight unintentional movements.
+ Neutralizes values in deadzone and scales remaining values within [0, 1023].
+ @params:
+ int value - joystick value to be mapped;
+ int deadzone_radius - radius of effect of the joystick deadzone;
+ */
+double applyDeadzone(int value, int deadzone_radius){
+
+  // Apply zone around center (511, 511)
+  if (abs(value - 511) <= deadzone_radius){
+    return 511;
+  } else {
+    if (value > 511){ // value > 511 + deadzone
+      return (double) map(value, 511, 1023, 511+deadzone_radius, 1023);
+    } else { // value < 511 - deadzone
+      return (double) map(value, 0, 511, 0, 511-deadzone_radius);
+    }
+  }
 }

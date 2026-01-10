@@ -15,3 +15,12 @@ head height: .114
 screw hole scale x: 1.79167 times      \___ 0.0475 all direction, 0.095 per axis
  		y:  1.2375 times   /
 vertically move screw head gap: .09 clearance on bottom, 0.11 rest through to top
+
+
+
+Code: 
+- transmitter/receiver: adjust LoRa transmit encoding to send using byte encoding not ASCII
+- transmitter/receiver: add check bit to ensure packet clarity
+- receiver: functionality to adjust movement scalers boundaries according to current trim 
+
+- eventually encode/compress camera feed?
