@@ -40,7 +40,7 @@ This project aims to create an affordable, modular, and easy-to-build drone syst
 All 3D models for this project were designed in **Blender**, with an emphasis on simplicity and structural integrity. The designs are optimized for 3D printing using widely accessible filament-based printers. 
 
 ### **Prototype Images:**
-*![Prototype Image](images/prototype_image_1.jpg)*
+*![Prototype Image](images/Prototype_image_1.jpg)*
 
 
 ## ✍️ **Schematics**
